@@ -1,5 +1,6 @@
-x = Foo
-y = Bar
+a = Foo
+b = Bar
+c = Baz
+y = Foo
 z = Baz
-x.c = Baz
-PRINT
+DEBUG

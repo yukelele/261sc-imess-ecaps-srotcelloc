@@ -109,7 +109,7 @@ class Heap {
   // are relative to the from pointer). If you were to allocate objects of sizes 5 and 10
   // on an empty heap, and assign them to x and y, your root set would look like this:
   // x -> 0
-  // y -> 10
+  // y -> 5
   std::map<std::string, obj_ptr> root_set;
   // This is the object id counter, it assigns every new object a unique id.
   // You don't need to touch this in any way.
@@ -124,6 +124,9 @@ public:
 
   // You should define collect in impl.cpp
   void    collect();
+
+  // this method will copy the object in the from-space to the to-space
+  obj_ptr copy(int32_t size);
 
   // You should optionally define debug in impl.cpp
   void    debug();
@@ -167,7 +170,6 @@ public:
   // For example, if you have an object Foo at the beginning of the heap,
   // and would like its local address (which in this case would be 0), you can do:
   // obj_ptr p = local_address(heap)
-  //
   template<class T>
   int32_t local_address(T *obj) {
     return (int32_t)(reinterpret_cast<byte*>(obj) - from);

@@ -2,7 +2,9 @@
 
 #include <iostream>
 #include <map>
+#include <stdlib.h>
 
+using namespace std;
 
 Heap::Heap(int32_t heap_size) : heap_size(heap_size), root_set() {
   heap = new byte[heap_size];
@@ -20,7 +22,36 @@ Heap::~Heap() {
 // debugging tool. It's called whenever the DEBUG command is found
 // in the input program.
 void Heap::debug() {
-  // Implement me
+  
+  cout << "\nDEBUGGING\n" << endl;
+
+  cout << "PRINT" << endl;
+  print();
+  //position < (from + heap_size / 2) && position < (from + bump_ptr)
+  cout << "from = " << local_address(from) << endl;
+  cout << "bump_ptr = " << bump_ptr << endl;
+  cout << "to = " << local_address(to) << endl;
+  print();
+ 
+  cout << local_address(from) << endl;
+  cout << local_address(from+sizeof(Foo)) << endl;
+  object_type type = *reinterpret_cast<object_type*>(from+sizeof(Foo));
+  cout << "1. " << type << endl;
+  cout << local_address(to) << endl;
+  // cout << "2. " << &from << endl;
+  // cout <<  "3. " <<global_address<Foo>(40) << endl;
+  // auto *b = global_address<Foo>(40);
+  // cout << b->c << endl; 
+  //  //auto *copy = new (to + 0) Baz(b->id);
+  //  //object_type t = *reinterpret_cast<object_type*>(to);
+  //  //cout << "1. " << t << endl;
+  // Foo obj = *b;
+  // cout << obj.id << endl;
+  // auto *dfs = b;
+  // cout << dfs->c << endl;
+  // object_type *p; 
+  //memcpy ( p, b, sizeof(Foo) );
+  //cout << "copy : " << p << endl;
 }
 
 // The allocate method allocates a chunk of memory of given size.
@@ -31,16 +62,97 @@ void Heap::debug() {
 // this method should throw an out_of_memory exception.
 obj_ptr Heap::allocate(int32_t size) {
   // Implement me
+  cout << "initial bump pointer is:   " << bump_ptr << endl;
+
+  obj_ptr local_pos = bump_ptr; // save the initial bump pointer
+  bump_ptr += size;             // allocate the bump pointer
+  if((from+bump_ptr) >= (from+heap_size/2)){ //} || bump_ptr >= heap_size){ // if there is not enough memory 'from' space
+    collect();
+    local_pos = bump_ptr; // new bump pointer
+    bump_ptr += size; 
+  }
+
+  
+  try{
+    if((from+bump_ptr) >= (from+heap_size/2)){
+      string error = "NOT ENOUGH MEMORY";
+      throw error;
+    }
+  }
+  catch(string message){
+    cout << message << endl;
+    print();
+    OutOfMemoryException();
+    exit(1);
+  }
+
+  return local_pos;             // return the initial bump pointer before it was allocated
 }
 
 // This method should implement the actual semispace garbage collection.
 // As a final result this method *MUST* call print();
 void Heap::collect() {
   // Implement me
+  cout << "COLLECTION IS CALLED!!!" << endl;
+
+  vector <obj_ptr> root_ptr ;
+  for(auto elem : root_set){
+    std::cout << elem.first << " " << elem.second << " " << "\n";
+    root_ptr.push_back(elem.second);
+  }
+  byte *new_bump = to;
+  for(auto elem : root_ptr){
+    cout << "position: " << elem;
+    byte *position = from + elem;
+    object_type type = *reinterpret_cast<object_type*>(position);
+    cout << " | type: " << type;
+    //BYTE *newPos = to + elem;
+    switch(type) {
+      case FOO: {
+        auto obj = reinterpret_cast<Foo*>(position);
+        cout << " | FOO" << endl;
+        new (new_bump) Foo(obj->id);
+        new_bump += sizeof(Foo);
+        cout << "new location is : " << local_address(new_bump) << endl;
+        cout << *reinterpret_cast<object_type*>(new_bump - sizeof(Foo)) << endl;
+        break;
+      }
+      case BAR: {
+        auto obj = reinterpret_cast<Bar*>(position);
+        cout << " | BAR" << endl;
+        new (new_bump) Bar(obj->id);
+        new_bump += sizeof(Bar);
+        cout << "new location is : " << local_address(new_bump) << endl;
+        cout <<  *reinterpret_cast<object_type*>(new_bump - sizeof(Bar)) << endl;
+        break;
+      }
+      case BAZ: {
+        auto obj = reinterpret_cast<Baz*>(position);
+        cout <<  " | BAZ" << endl;
+        new (new_bump) Baz(obj->id);
+        new_bump += sizeof(Baz);
+        cout << "new location is : " << local_address(new_bump) << endl;
+        cout << *reinterpret_cast<object_type*>(new_bump - sizeof(Baz)) << endl;
+        break;
+      }
+    }
+  }
+  
+  bump_ptr = local_address(new_bump);
+  if(bump_ptr >= 100)
+    bump_ptr -= 100;
+  
+  byte *temp = from; 
+  from = to;
+  to = temp; 
 
   // Please do not remove the call to print, it has to be the final
   // operation in the method for your assignment to be graded.
   print();
+}
+
+obj_ptr Heap::copy(int32_t size){ 
+
 }
 
 obj_ptr Heap::get_root(const std::string& name) {
