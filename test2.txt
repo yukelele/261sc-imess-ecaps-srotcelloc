@@ -1,0 +1,4 @@
+a = Baz
+a.c = Foo
+c = Bar
+DEBUG

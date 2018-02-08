@@ -84,14 +84,14 @@ void Heap::debug_heap_print(){
 void Heap::debug() {
   
   cout << "\n--------DEBUGGING--------\n" << endl;
-
+  
   cout << "PRINT" << endl;
   print();
   cout << "-----------" << endl;
   cout << "from = " << local_address(from) << endl;
   cout << "bump_ptr = " << bump_ptr << endl;
   cout << "to = " << local_address(to) << endl;
-
+  
   //object_type type = *reinterpret_cast<object_type*>(from);
   //auto obj = reinterpret_cast<Foo*>(from);
   vector <obj_ptr> root_ptr ;
@@ -99,9 +99,9 @@ void Heap::debug() {
     std::cout << elem.first << " " << elem.second << " " << "\n";
     root_ptr.push_back(elem.second);
   }
-
+  
   debug_heap_print();
-
+  
   auto *o = global_address<Baz>(root_ptr[0]);
   cout << o->id << endl;
   cout << o->c << endl;
@@ -110,9 +110,9 @@ void Heap::debug() {
   auto *d = global_address<Bar> (o->c);
   //bject_type s = *reinterpret_cast<object_type*>(d);
   cout << d->id << endl;
-
-
-//  +  // cout <<  "3. " <<global_address<Foo>(40) << endl;
+  
+  
+  //  +  // cout <<  "3. " <<global_address<Foo>(40) << endl;
 //  +  // auto *b = global_address<Foo>(40);
 //  +  // cout << b->c << endl; 
 //  +  //  //auto *copy = new (to + 0) Baz(b->id);
@@ -136,7 +136,7 @@ void Heap::debug() {
 obj_ptr Heap::allocate(int32_t size) {
   // Implement me
   cout << "initial bump pointer is:   " << bump_ptr << endl;
-
+  
   obj_ptr local_pos = bump_ptr; // save the initial bump pointer
   bump_ptr += size;             // allocate the bump pointer
   cout << "stop ====" << endl;
@@ -154,11 +154,17 @@ obj_ptr Heap::allocate(int32_t size) {
   }
   catch(string message){
     cout << message << endl;
+    bump_ptr-=size;
     print();
+
+    for(auto elem : root_set){
+      cout << elem.first << " " << elem.second << endl;
+    }
     OutOfMemoryException();
     exit(1);
   }
   cout << "forever ***** "<< endl;
+
   return local_pos;             // return the initial bump pointer before it was allocated
 }
 
@@ -167,41 +173,57 @@ obj_ptr Heap::allocate(int32_t size) {
 void Heap::collect() {
   // Implement me
   cout << "COLLECTION IS CALLED!!!" << endl;
-
+  
   byte *new_bump = to;
   for(auto elem : root_set){
-    cout << "position: " << elem.second;
+    cout << " variable: " << elem.first;
+    cout << " position: " << elem.second;
     byte *position = from + elem.second;
     object_type type = *reinterpret_cast<object_type*>(position);
-    cout << " | type: " << type;
+    cout << " | type: " << type << " !!! ";
     //BYTE *newPos = to + elem;
     switch(type) {
-      case FOO: {
+    case FOO: {
         auto obj = reinterpret_cast<Foo*>(position);
         cout << " | FOO" << endl;
         new (new_bump) Foo(obj->id);
-        //root_set[elem.first] = local_address(new_bump);
-        new_bump += sizeof(Foo);
+	      if(local_address(new_bump)>=heap_size/2)
+	        root_set[elem.first] = local_address(new_bump) - heap_size/2;
+	      else if(local_address(new_bump)<heap_size/2)
+          root_set[elem.first] = local_address(new_bump) + heap_size/2;
+        else
+          root_set[elem.first] = local_address(new_bump);
+	      new_bump += sizeof(Foo);
         cout << "new location is : " << local_address(new_bump) << endl;
         cout << *reinterpret_cast<object_type*>(new_bump - sizeof(Foo)) << endl;
         break;
       }
-      case BAR: {
+    case BAR: {
         auto obj = reinterpret_cast<Bar*>(position);
         cout << " | BAR" << endl;
         new (new_bump) Bar(obj->id);
-        //root_set[elem.first] = local_address(new_bump);
+	      if(local_address(new_bump)>=heap_size/2)
+	        root_set[elem.first] = local_address(new_bump) - heap_size/2;
+        else if(local_address(new_bump)<heap_size/2)
+          root_set[elem.first] = local_address(new_bump) + heap_size/2;
+        else
+          root_set[elem.first] = local_address(new_bump);
         new_bump += sizeof(Bar);
         cout << "new location is : " << local_address(new_bump) << endl;
         cout <<  *reinterpret_cast<object_type*>(new_bump - sizeof(Bar)) << endl;
         break;
       }
-      case BAZ: {
+    case BAZ: {
         auto obj = reinterpret_cast<Baz*>(position);
         cout <<  " | BAZ" << endl;
         new (new_bump) Baz(obj->id);
-        //root_set[elem.first] = local_address(new_bump);
-        new_bump += sizeof(Baz);
+        if(local_address(new_bump)>=heap_size/2)
+	        root_set[elem.first] = local_address(new_bump) - heap_size/2;
+	      else if(local_address(new_bump)<heap_size/2)
+          root_set[elem.first] = local_address(new_bump) + heap_size/2;
+        else
+          root_set[elem.first] = local_address(new_bump);
+      	new_bump += sizeof(Baz);
         cout << "new bump ptr is : " << local_address(new_bump) << endl;
         cout << *reinterpret_cast<object_type*>(new_bump - sizeof(Baz)) << endl;
         break;
@@ -211,11 +233,17 @@ void Heap::collect() {
   bump_ptr = local_address(new_bump);
   if(bump_ptr >= heap_size/2)
     bump_ptr -= heap_size/2;
+  if(bump_ptr < 0)
+    bump_ptr += heap_size/2;
   
   byte *temp = from; 
   from = to;
   to = temp; 
-
+  
+  cout << "from : " << local_address(from) << endl;
+  cout << "bump : " << bump_ptr << endl;
+  cout << "to : " << local_address(to) << endl;
+  
   // Please do not remove the call to print, it has to be the final
   // operation in the method for your assignment to be graded.
   print();
@@ -237,12 +265,12 @@ object_type Heap::get_object_type(obj_ptr ptr) {
 obj_ptr *Heap::get_nested(const std::vector<std::string>& path) {
   obj_ptr init = get_root(path[0]);
   obj_ptr *fld = &init;
-
+  
   for(int i = 1; i < path.size(); ++i) {
     auto addr = *fld;
     auto type = *reinterpret_cast<object_type*>(global_address<object_type>(addr));
     auto seg  = path[i];
-
+    
     switch(type) {
     case FOO: {
       auto *foo = global_address<Foo>(addr);
@@ -250,23 +278,23 @@ obj_ptr *Heap::get_nested(const std::vector<std::string>& path) {
       else if(seg == "d") fld = &foo->d;
       else throw std::runtime_error("No such field: Foo." + seg);
       break;
-    }
+      }
     case BAR: {
       auto *bar = global_address<Bar>(addr);
       if(seg == "c") fld = &bar->c;
       else if(seg == "f") fld = &bar->f;
       else throw std::runtime_error("No such field: Bar." + seg);
       break;
-    }
+      }
     case BAZ: {
       auto *baz = global_address<Baz>(addr);
       if(seg == "b") fld = &baz->b;
       else if(seg == "c") fld = &baz->c;
       else throw std::runtime_error("No such field: Baz." + seg);
       break;
-    }}
+      }
+    }
   }
-
   return fld;
 }
 
@@ -310,23 +338,22 @@ obj_ptr Heap::new_baz() {
 void Heap::print() {
   byte *position = from;
   std::map<int32_t, const char*> objects;
-
   while(position < (from + heap_size / 2) && position < (from + bump_ptr)) {
     object_type type = *reinterpret_cast<object_type*>(position);
     switch(type) {
-      case FOO: {
+    case FOO: {
         auto obj = reinterpret_cast<Foo*>(position);
         objects[obj->id] = "Foo";
         position += sizeof(Foo);
         break;
       }
-      case BAR: {
+    case BAR: {
         auto obj = reinterpret_cast<Bar*>(position);
         objects[obj->id] = "Bar";
         position += sizeof(Bar);
         break;
       }
-      case BAZ: {
+    case BAZ: {
         auto obj = reinterpret_cast<Baz*>(position);
         objects[obj->id] = "Baz";
         position += sizeof(Baz);
@@ -334,7 +361,7 @@ void Heap::print() {
       }
     }
   }
-
+  
   std::cout << "Objects in from-space:\n";
   for(auto const& itr: objects) {
     std::cout << " - " << itr.first << ':' << itr.second << '\n';
