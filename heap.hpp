@@ -125,10 +125,8 @@ public:
   // You should define collect in impl.cpp
   void    collect();
 
-  // this method will copy the object in the from-space to the to-space
-  obj_ptr copy(int32_t size);
-
   // You should optionally define debug in impl.cpp
+  void debug_heap_print();
   void    debug();
 
   // This method will dump (print) all objects currently in the from space.
