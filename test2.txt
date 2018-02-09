@@ -1,4 +1,7 @@
 a = Baz
-a.c = Foo
+b = Foo
 c = Bar
+d = Foo
+b = NULL
+e = Bar
 DEBUG

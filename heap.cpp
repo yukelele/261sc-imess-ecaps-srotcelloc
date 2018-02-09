@@ -2,7 +2,8 @@
 
 #include <iostream>
 #include <map>
-#include <stdlib.h>
+#include <cstdlib>
+#include <cstring>
 
 using namespace std;
 
@@ -56,6 +57,8 @@ void Heap::debug_heap_print(){
   while(position < to+heap_size/2){
     int32_t p = local_address(position);
     object_type type = *reinterpret_cast<object_type*>(position);
+    cout << "type " << type << endl;
+   
     switch(type) {
       case FOO: {
         auto obj = reinterpret_cast<Foo*>(position);
@@ -75,6 +78,15 @@ void Heap::debug_heap_print(){
         position += sizeof(Baz);
         break;
       }
+      // case FOL: {
+      //   cout << "debugging following pointer" << endl;
+      //   auto obj = reinterpret_cast<Fol*>(position);
+ 
+      //   cout << p << " = FOL" << " " << obj->id<< endl;
+      
+      //   position += obj->size;
+      //   break;
+      // }
     }
   }
   cout << "!!!!!!!!!" << endl;
@@ -102,29 +114,6 @@ void Heap::debug() {
   
   debug_heap_print();
   
-  auto *o = global_address<Baz>(root_ptr[0]);
-  cout << o->id << endl;
-  cout << o->c << endl;
-  //object_type t = reinterpret_cast<Foo>(o);
-  //cout << t << endl;
-  auto *d = global_address<Bar> (o->c);
-  //bject_type s = *reinterpret_cast<object_type*>(d);
-  cout << d->id << endl;
-  
-  
-  //  +  // cout <<  "3. " <<global_address<Foo>(40) << endl;
-//  +  // auto *b = global_address<Foo>(40);
-//  +  // cout << b->c << endl; 
-//  +  //  //auto *copy = new (to + 0) Baz(b->id);
-//  +  //  //object_type t = *reinterpret_cast<object_type*>(to);
-//  +  //  //cout << "1. " << t << endl;
-//  +  // Foo obj = *b;
-//  +  // cout << obj.id << endl;
-//  +  // auto *dfs = b;
-//  +  // cout << dfs->c << endl;
-//  +  // object_type *p; 
-//  +  //memcpy ( p, b, sizeof(Foo) );
-//  +  //cout << "copy : " << p << endl;
 }
 
 // The allocate method allocates a chunk of memory of given size.
@@ -146,23 +135,10 @@ obj_ptr Heap::allocate(int32_t size) {
     bump_ptr += size; 
   }
   cout << "never ++++ " << endl;
-  try{
-    if((from+bump_ptr) >= (from+heap_size/2)){
-      string error = "OUT OF MEMOERY";
-      throw error;
-    }
+  if((from+bump_ptr) >= (from+heap_size/2)){
+      throw OutOfMemoryException();
   }
-  catch(string message){
-    cout << message << endl;
-    bump_ptr-=size;
-    print();
 
-    for(auto elem : root_set){
-      cout << elem.first << " " << elem.second << endl;
-    }
-    OutOfMemoryException();
-    exit(1);
-  }
   cout << "forever ***** "<< endl;
 
   return local_pos;             // return the initial bump pointer before it was allocated
@@ -175,66 +151,118 @@ void Heap::collect() {
   cout << "COLLECTION IS CALLED!!!" << endl;
   
   byte *new_bump = to;
+  map<obj_ptr,obj_ptr> copy;
   for(auto elem : root_set){
     cout << " variable: " << elem.first;
     cout << " position: " << elem.second;
     byte *position = from + elem.second;
     object_type type = *reinterpret_cast<object_type*>(position);
     cout << " | type: " << type << " !!! ";
-    //BYTE *newPos = to + elem;
+    
     switch(type) {
     case FOO: {
         auto obj = reinterpret_cast<Foo*>(position);
         cout << " | FOO" << endl;
-        new (new_bump) Foo(obj->id);
-	      if(local_address(new_bump)>=heap_size/2)
-	        root_set[elem.first] = local_address(new_bump) - heap_size/2;
-	      else if(local_address(new_bump)<heap_size/2)
-          root_set[elem.first] = local_address(new_bump) + heap_size/2;
-        else
-          root_set[elem.first] = local_address(new_bump);
-	      new_bump += sizeof(Foo);
-        cout << "new location is : " << local_address(new_bump) << endl;
-        cout << *reinterpret_cast<object_type*>(new_bump - sizeof(Foo)) << endl;
+        //new (new_bump) Foo(obj->id);
+        memcpy(new_bump, obj, sizeof(Foo));
+        copy[local_address(obj)] = new_bump - to; 
+	      // if(local_address(new_bump)>=heap_size/2)
+	      //   root_set[elem.first] = local_address(new_bump) - heap_size/2;
+	      // else if(local_address(new_bump)<heap_size/2)
+        //   root_set[elem.first] = local_address(new_bump) + heap_size/2;
+        // else
+        //   root_set[elem.first] = local_address(new_bump);
+	      //new (position) Fol(obj->id);
+        //auto follow = reinterpret_cast<Fol*>(position);
+        //follow->real_pos = *new_bump;
+        //follow->size = sizeof(Baz);
+        new_bump += sizeof(Foo);
+        //cout << "new location is : " << local_address(new_bump) << endl;
+        //cout << *reinterpret_cast<object_type*>(new_bump - sizeof(Foo)) << endl;
         break;
       }
     case BAR: {
         auto obj = reinterpret_cast<Bar*>(position);
         cout << " | BAR" << endl;
-        new (new_bump) Bar(obj->id);
-	      if(local_address(new_bump)>=heap_size/2)
-	        root_set[elem.first] = local_address(new_bump) - heap_size/2;
-        else if(local_address(new_bump)<heap_size/2)
-          root_set[elem.first] = local_address(new_bump) + heap_size/2;
-        else
-          root_set[elem.first] = local_address(new_bump);
+        // new (new_bump) Bar(obj->id);
+        memcpy(new_bump, obj, sizeof(Bar));
+        copy[local_address(obj)] = new_bump - to;
+        // std::map<obj_ptr, obj_ptr>
+        //if (obj->c != nil_ptr) obj->c = change[obj->c]
+	      // if(local_address(new_bump)>=heap_size/2)
+	      //   root_set[elem.first] = local_address(new_bump) - heap_size/2;
+        // else if(local_address(new_bump)<heap_size/2)
+        //   root_set[elem.first] = local_address(new_bump) + heap_size/2;
+        // else
+        //   root_set[elem.first] = local_address(new_bump);
+        // new (position) Fol(obj->id);
+        // auto follow = reinterpret_cast<Fol*>(position);
+        // follow->real_pos = *new_bump;
+        // follow->size = sizeof(Baz);
         new_bump += sizeof(Bar);
-        cout << "new location is : " << local_address(new_bump) << endl;
-        cout <<  *reinterpret_cast<object_type*>(new_bump - sizeof(Bar)) << endl;
+        // cout << "new location is : " << local_address(new_bump) << endl;
+        // cout <<  *reinterpret_cast<object_type*>(new_bump - sizeof(Bar)) << endl;
         break;
       }
     case BAZ: {
         auto obj = reinterpret_cast<Baz*>(position);
         cout <<  " | BAZ" << endl;
-        new (new_bump) Baz(obj->id);
-        if(local_address(new_bump)>=heap_size/2)
-	        root_set[elem.first] = local_address(new_bump) - heap_size/2;
-	      else if(local_address(new_bump)<heap_size/2)
-          root_set[elem.first] = local_address(new_bump) + heap_size/2;
-        else
-          root_set[elem.first] = local_address(new_bump);
-      	new_bump += sizeof(Baz);
-        cout << "new bump ptr is : " << local_address(new_bump) << endl;
-        cout << *reinterpret_cast<object_type*>(new_bump - sizeof(Baz)) << endl;
+        memcpy(new_bump, obj, sizeof(Baz));
+        copy[local_address(obj)] = new_bump - to;
+        // new (new_bump) Baz(obj->id);
+        // if(local_address(new_bump)>=heap_size/2)
+	      //   root_set[elem.first] = local_address(new_bump) - heap_size/2;
+	      // else if(local_address(new_bump)<heap_size/2)
+        //   root_set[elem.first] = local_address(new_bump) + heap_size/2;
+        // else
+        //   root_set[elem.first] = local_address(new_bump);
+      	// new (position) Fol(obj->id);
+        // auto follow = reinterpret_cast<Fol*>(position);
+        // follow->real_pos = *new_bump;
+        // follow->size = sizeof(Baz);
+        new_bump += sizeof(Baz);
+        // cout << "new bump ptr is : " << local_address(new_bump) << endl;
+        // cout << *reinterpret_cast<object_type*>(new_bump - sizeof(Baz)) << endl;
         break;
       }
     }
   }
-  bump_ptr = local_address(new_bump);
-  if(bump_ptr >= heap_size/2)
-    bump_ptr -= heap_size/2;
-  if(bump_ptr < 0)
-    bump_ptr += heap_size/2;
+
+
+  for(auto fol : copy){
+    byte *position = to + fol.second;
+    object_type type = *reinterpret_cast<object_type*>(position);
+    switch(type) {
+    case FOO: {
+      auto obj = reinterpret_cast<Foo*>(position);
+      if(obj->c != nil_ptr) obj->c = copy[obj->c];
+      if(obj->d != nil_ptr) obj->d = copy[obj->d];
+      break; 
+    }
+    case BAR: {
+      auto obj = reinterpret_cast<Bar*>(position);
+      if(obj->c != nil_ptr) obj->c = copy[obj->c];
+      if(obj->f != nil_ptr) obj->f = copy[obj->f];
+      break;
+    }
+    case BAZ: {
+      auto obj = reinterpret_cast<Baz*>(position);
+      if(obj->c != nil_ptr) obj->c = copy[obj->c];
+      if(obj->b != nil_ptr) obj->b = copy[obj->b];
+      break;
+    }
+    }
+  }
+
+  for(auto elem : root_set){
+    root_set[elem.first] = copy[elem.second];
+  }
+
+  bump_ptr = new_bump - to; 
+  // if(bump_ptr >= heap_size/2)
+  //   bump_ptr -= heap_size/2;
+  // if(bump_ptr < 0)
+  //   bump_ptr += heap_size/2;
   
   byte *temp = from; 
   from = to;

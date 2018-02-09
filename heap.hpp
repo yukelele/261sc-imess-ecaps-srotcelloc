@@ -22,7 +22,7 @@ static const obj_ptr nil_ptr(-1);
 // The object type tag will always be a single byte in size.
 // 
 enum object_type : byte {
-  FOO, BAR, BAZ, FOL
+  FOO, BAR, BAZ, //FOL
 };
 
 // There are three possible objects we can allocate on the heap,
@@ -74,13 +74,16 @@ struct Baz {
   Baz(uint32_t id) : id(id) {}
 };
 
-struct Fol {
-  object_type type = FOL;
-  uint32_t id = -1; 
-  byte pos = -1; 
+// struct Fol {
+//   object_type type = FOL;
+//   uint32_t id;
 
-  obj_ptr follow = nil_ptr; 
-};
+//   byte real_pos = -1;
+//   int size = -1; 
+//   obj_ptr follow = nil_ptr; 
+
+//   Fol(uint32_t id) : id(id) {}
+// };
 
 // This exception should be thrown when an allocation is attempted, but
 // garbage collection is unable to free the needed space.
