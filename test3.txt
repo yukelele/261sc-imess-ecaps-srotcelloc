@@ -1,7 +1,16 @@
 a = Foo
+a.c = Bar
+a.d = Baz
 b = Bar
-b.c = Foo
-b.f = a
+b.c = Baz
+b.f = Foo
+c = a.d
+a.d = NULL
+c.c = Foo
+c.b = Bar
+d = Bar
+d.c = b 
+b = NULL
 b = Bar
-c = Foo
+a = NULL
 DEBUG

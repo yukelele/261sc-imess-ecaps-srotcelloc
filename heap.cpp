@@ -51,40 +51,63 @@ void Heap::debug_heap_print(){
       }
     }
   }
-  cout << "------- other half ----- " << endl;
-  cout << "to space" << endl;
-  position = to;
-  while(position < to+heap_size/2){
-    int32_t p = local_address(position);
+  cout << "!!!!!!!!!" << endl;
+  cout << endl;
+}
+
+void Heap::debug_tracker(std::string var, byte *position){
+    
     object_type type = *reinterpret_cast<object_type*>(position);
-    cout << "type " << type << endl;
-    if (type == -1 ){
-      break;
-    }
     switch(type) {
       case FOO: {
         auto obj = reinterpret_cast<Foo*>(position);
-        cout << p << " = FOO" << endl;
-        position += sizeof(Foo);
-        break;
+        cout << " || obj = FOO" << endl;
+        if(obj->c != nil_ptr) {
+          cout << var << "->c: pos = " << local_address(from + obj->c); 
+          std::string s = var + "->c";
+          
+          debug_tracker(s, from+obj->c);
+        };
+        if(obj->d != nil_ptr) {
+          cout << var << "->d: pos = " << local_address(from + obj->d); 
+          std::string s = var + "->d";
+          debug_tracker(s, from+obj->d);
+        };
+        break; 
       }
       case BAR: {
         auto obj = reinterpret_cast<Bar*>(position);
-        cout << p << " = BAR" << endl;
-        position += sizeof(Bar);
+        cout << " || obj = BAR" << endl;
+        if(obj->c != nil_ptr){
+          cout << var << "->c: pos = " << local_address(from + obj->c); 
+          std::string s = var + "->c";
+          debug_tracker(s, from+obj->c);
+        } 
+        if(obj->f != nil_ptr) {
+          cout << var << "->f: pos = " << local_address(from + obj->f); 
+          std::string s = var + "->f";
+          debug_tracker(s, from+obj->f);
+        };
         break;
       }
       case BAZ: {
         auto obj = reinterpret_cast<Baz*>(position);
-        cout << p << " = BAZ" << endl;
-        position += sizeof(Baz);
+        cout << " || obj = BAZ" << endl;
+        if(obj->c != nil_ptr) {
+          cout << var << "->c: pos = " << local_address(from + obj->c); 
+          std::string s = var + "->c";
+          debug_tracker(s, from+obj->c);
+        };
+        if(obj->b != nil_ptr) {
+          cout << var << "->b: pos = " << local_address(from + obj->b); 
+          std::string s = var + "->b";
+          debug_tracker(s, from+obj->b);
+        };
         break;
       }
     }
-  }
-  cout << "!!!!!!!!!" << endl;
-  cout << endl;
 }
+
 
 void Heap::debug() {
   
@@ -92,15 +115,12 @@ void Heap::debug() {
   
   cout << "PRINT" << endl;
   print();
-  cout << "-----------" << endl;
-  cout << "from = " << local_address(from) << endl;
-  cout << "bump_ptr = " << bump_ptr << endl;
-  cout << "to = " << local_address(to) << endl;
   
-  vector <obj_ptr> root_ptr ;
+  cout << "\n DEBUG TRACKER" << endl;
   for(auto elem : root_set){
-    std::cout << "variable = " << elem.first << " || position = " << elem.second << " " << "\n";
-    root_ptr.push_back(elem.second);
+    std::cout << "variable = " << elem.first << " || position = " << elem.second;
+    vector<obj_ptr> tracked; 
+    //debug_tracker( elem.first, from + elem.second);
   }
   debug_heap_print();
 }
@@ -113,13 +133,11 @@ void Heap::debug() {
 // this method should throw an out_of_memory exception.
 obj_ptr Heap::allocate(int32_t size) {
   // Implement me
-  cout << "initial bump pointer is:   " << bump_ptr << endl;
-  
-  obj_ptr local_pos = bump_ptr; // save the initial bump pointer
-  bump_ptr += size;             // allocate the bump pointer
-  if((from+bump_ptr) >= (from+heap_size/2)){ //} || bump_ptr >= heap_size){ // if there is not enough memory 'from' space
+  obj_ptr local_pos = bump_ptr; 
+  bump_ptr += size;             
+  if((from+bump_ptr) >= (from+heap_size/2)){ 
     collect();
-    local_pos = bump_ptr; // new bump pointer
+    local_pos = bump_ptr; 
     bump_ptr += size; 
   }
   if((from+bump_ptr) >= (from+heap_size/2)){
@@ -128,44 +146,91 @@ obj_ptr Heap::allocate(int32_t size) {
   return local_pos;             // return the initial bump pointer before it was allocated
 }
 
+
+void Heap::copy_nest(std::map<obj_ptr,obj_ptr> &copy,  byte *position){
+  object_type type = *reinterpret_cast<object_type*>(position);
+  
+  if(copy.count(local_address(position))){ //prevent duplicate copies
+    return;
+  }
+  
+  switch(type){
+    case FOO:{
+      auto obj = reinterpret_cast<Foo*>(position);
+      memcpy(new_bump, obj, sizeof(Foo));
+      copy[local_address(obj)] = new_bump - to; 
+      new_bump += sizeof(Foo);
+      if(obj->c != nil_ptr)
+        copy_nest(copy, from + obj->c);
+      if(obj->d != nil_ptr)
+        copy_nest(copy, from+obj->d);
+      break;
+    }
+    case BAR:{
+      auto obj = reinterpret_cast<Bar*>(position);
+      memcpy(new_bump, obj, sizeof(Bar));
+      copy[local_address(obj)] = new_bump - to; 
+      new_bump += sizeof(Bar);
+      if(obj->c != nil_ptr)
+        copy_nest(copy, from + obj->c);
+      if(obj->f != nil_ptr)
+        copy_nest(copy, from+obj->f);
+      break;
+    }
+    case BAZ:{
+      auto obj = reinterpret_cast<Baz*>(position);
+      memcpy(new_bump, obj, sizeof(Baz));
+      copy[local_address(obj)] = new_bump - to; 
+      new_bump += sizeof(Baz);
+      if(obj->c != nil_ptr)
+        copy_nest(copy, from + obj->c);
+      if(obj->b != nil_ptr)
+        copy_nest(copy, from+obj->b);
+      break;
+    }
+  }
+}
+
 // This method should implement the actual semispace garbage collection.
 // As a final result this method *MUST* call print();
 void Heap::collect() {
   // Implement me
-  cout << "COLLECTION IS CALLED!!!" << endl;
-  
-  byte *new_bump = to;
+  new_bump = to; // global new bump pointer
   map<obj_ptr,obj_ptr> copy;
   for(auto elem : root_set){
-    cout << " variable: " << elem.first;
-    cout << " position: " << elem.second;
     byte *position = from + elem.second;
     object_type type = *reinterpret_cast<object_type*>(position);
-    cout << " | type: " << type << " !!! ";
     
+    if(copy.count(local_address(position))){ // prevent duplicate copies
+      continue; 
+    }
+
     switch(type) {
     case FOO: {
         auto obj = reinterpret_cast<Foo*>(position);
-        cout << " | FOO" << endl;
         memcpy(new_bump, obj, sizeof(Foo));
         copy[local_address(obj)] = new_bump - to; 
         new_bump += sizeof(Foo);
+        if(obj->c != nil_ptr) copy_nest(copy, from + obj->c);
+        if(obj->d != nil_ptr) copy_nest(copy, from + obj->d);
         break;
       }
     case BAR: {
         auto obj = reinterpret_cast<Bar*>(position);
-        cout << " | BAR" << endl;
         memcpy(new_bump, obj, sizeof(Bar));
         copy[local_address(obj)] = new_bump - to;
         new_bump += sizeof(Bar);
+        if(obj->c != nil_ptr) copy_nest(copy, from + obj->c);
+        if(obj->f != nil_ptr) copy_nest(copy, from + obj->f);
         break;
       }
     case BAZ: {
         auto obj = reinterpret_cast<Baz*>(position);
-        cout <<  " | BAZ" << endl;
         memcpy(new_bump, obj, sizeof(Baz));
         copy[local_address(obj)] = new_bump - to;
         new_bump += sizeof(Baz);
+        if(obj->c != nil_ptr) copy_nest(copy, from + obj->c);
+        if(obj->b != nil_ptr) copy_nest(copy, from + obj->b);
         break;
       }
     }
@@ -206,14 +271,11 @@ void Heap::collect() {
   from = to;
   to = temp; 
   
-  cout << "from : " << local_address(from) << endl;
-  cout << "bump : " << bump_ptr << endl;
-  cout << "to : " << local_address(to) << endl;
-  
   // Please do not remove the call to print, it has to be the final
   // operation in the method for your assignment to be graded.
   print();
 }
+
 
 obj_ptr Heap::get_root(const std::string& name) {
   auto root = root_set.find(name);
@@ -326,8 +388,7 @@ void Heap::print() {
         break;
       }
     }
-  }
-  
+  } 
   std::cout << "Objects in from-space:\n";
   for(auto const& itr: objects) {
     std::cout << " - " << itr.first << ':' << itr.second << '\n';

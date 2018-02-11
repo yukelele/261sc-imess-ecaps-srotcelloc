@@ -7,4 +7,5 @@ e = Foo
 a = NULL
 f = Baz
 g = Foo
+COLLECT
 DEBUG

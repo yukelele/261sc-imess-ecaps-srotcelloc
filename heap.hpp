@@ -106,6 +106,8 @@ class Heap {
   // If we were to allocate 10 bytes on an empty heap, bump_ptr would then point to 10.
   int32_t bump_ptr;
 
+  byte *new_bump; //global new bump pointer
+
   // This is your root set, it maps variables to object pointers (again, object pointers
   // are relative to the from pointer). If you were to allocate objects of sizes 5 and 10
   // on an empty heap, and assign them to x and y, your root set would look like this:
@@ -124,10 +126,12 @@ public:
   obj_ptr allocate(int32_t size);
 
   // You should define collect in impl.cpp
+  void    copy_nest(std::map<obj_ptr,obj_ptr> &copy, byte *position);
   void    collect();
 
   // You should optionally define debug in impl.cpp
   void debug_heap_print();
+  void debug_tracker(std::string var, byte *postion);
   void    debug();
 
   // This method will dump (print) all objects currently in the from space.

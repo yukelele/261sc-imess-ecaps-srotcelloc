@@ -1,0 +1,10 @@
+a = Foo
+a.c = Bar
+a.c.c = Foo
+b = Baz
+b.c = a.c
+b.c.c = b
+a = NULL
+c = b
+COLLECT
+DEBUG
