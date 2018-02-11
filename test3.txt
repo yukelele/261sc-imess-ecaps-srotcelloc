@@ -1,0 +1,7 @@
+a = Foo
+b = Bar
+b.c = Foo
+b.f = a
+b = Bar
+c = Foo
+DEBUG
