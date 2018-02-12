@@ -64,15 +64,14 @@ void Heap::debug_tracker(std::string var, byte *position){
         cout << " || obj = FOO" << endl;
         if(obj->c != nil_ptr) {
           cout << var << "->c: pos = " << local_address(from + obj->c); 
-          std::string s = var + "->c";
-          
+          std::string s = var + "->c";   
           debug_tracker(s, from+obj->c);
-        };
+        }
         if(obj->d != nil_ptr) {
           cout << var << "->d: pos = " << local_address(from + obj->d); 
           std::string s = var + "->d";
           debug_tracker(s, from+obj->d);
-        };
+        }
         break; 
       }
       case BAR: {
@@ -87,7 +86,7 @@ void Heap::debug_tracker(std::string var, byte *position){
           cout << var << "->f: pos = " << local_address(from + obj->f); 
           std::string s = var + "->f";
           debug_tracker(s, from+obj->f);
-        };
+        }
         break;
       }
       case BAZ: {
@@ -97,12 +96,12 @@ void Heap::debug_tracker(std::string var, byte *position){
           cout << var << "->c: pos = " << local_address(from + obj->c); 
           std::string s = var + "->c";
           debug_tracker(s, from+obj->c);
-        };
+        }
         if(obj->b != nil_ptr) {
           cout << var << "->b: pos = " << local_address(from + obj->b); 
           std::string s = var + "->b";
           debug_tracker(s, from+obj->b);
-        };
+        }
         break;
       }
     }
@@ -150,10 +149,8 @@ obj_ptr Heap::allocate(int32_t size) {
 void Heap::copy_nest(std::map<obj_ptr,obj_ptr> &copy,  byte *position){
   object_type type = *reinterpret_cast<object_type*>(position);
   
-  if(copy.count(local_address(position))){ //prevent duplicate copies
-    return;
-  }
-  
+  if(copy.count(local_address(position))) return; //prevent duplicate copies
+    
   switch(type){
     case FOO:{
       auto obj = reinterpret_cast<Foo*>(position);
@@ -201,9 +198,7 @@ void Heap::collect() {
     byte *position = from + elem.second;
     object_type type = *reinterpret_cast<object_type*>(position);
     
-    if(copy.count(local_address(position))){ // prevent duplicate copies
-      continue; 
-    }
+    if(copy.count(local_address(position))) continue; // prevent duplicate copies
 
     switch(type) {
     case FOO: {
